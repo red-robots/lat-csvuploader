@@ -61,9 +61,10 @@ if(isset($_POST['download'])){
 }
 if ( isset( $_FILES['upload'] ) ) {
 	$upload_name = $_FILES['upload']['name'];
+	$file_size = $_FILES['upload']['size'];
 	$file_ext    = strtolower( end( explode( '.', $upload_name ) ) );
 	$expensions  = array( "csv" );
-	if ( in_array( $file_ext, $expensions ) === true ) {
+	if ( in_array( $file_ext, $expensions ) === true && $file_size <= 2097152 ) {
 		if ( move_uploaded_file( $_FILES['upload']['tmp_name'], "uploads/" . $upload_name ) ) {
 			$full_filename = "uploads/" . $upload_name;
 			if ( $fh = fopen( $full_filename, "r" ) ) {
