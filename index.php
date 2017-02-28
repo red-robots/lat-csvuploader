@@ -16,11 +16,22 @@
  */
 //turnoff errors
 error_reporting(0);
-$dbname = "lat";
-$username = "root";
-$pass = "pass";
-//setup mysql connections
+//loop in .env file
+$dbname = "";
+$username = "";
+$pass = "";
 $errors = [];
+if($fh = fopen(".env","r")){
+	$dbname = fgets($fh);
+	$username = fgets($fh);
+	$pass = fgets($fh);
+	//strip line return
+	$dbname = strlen($dbname)-1 > 0 ? substr($dbname,0,strlen($dbname)-1) : "";
+	$username = strlen($username)-1 > 0 ? substr($username,0,strlen($username)-1) : "";
+	$pass = strlen($pass)-1 > 0 ? substr($pass,0,strlen($pass)-1) : "";
+} else {
+    $errors[] = "couldn't open env file";
+}
 if(isset($_POST['download'])){
     try {
         $db = new PDO( "mysql:host=localhost;dbname={$dbname};charset=latin1", "{$username}", "{$pass}", array(
@@ -254,7 +265,7 @@ if ( !empty($errors) ) {
 	$dateTime = new DateTime();
 	if ( $fh = fopen( "logs/" . $dateTime->format( 'Ymd' ) . ".log", "a" ) ) {
 		foreach ( $errors as $error ) {
-			fwrite( $fh, $error + "\n" );
+			fwrite( $fh, $error . "\n" );
 		}
 		fclose( $fh );
 	}
@@ -276,9 +287,6 @@ if ( !empty($errors) ) {
 } ?>
 <?php if ( $errors ) {
 	echo "<h2>Errors - please see log</h2>";
-	foreach ( $errors as $error ) {
-		echo $error;
-	}
 } ?>
 <form enctype="multipart/form-data" action="" method="POST">
     <input type="file" name="upload"/>
