@@ -1,4 +1,6 @@
 uploads
 downloads
 logs
-.env
+login.php
+crypt.php
+
