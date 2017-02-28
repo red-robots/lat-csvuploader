@@ -46,10 +46,10 @@ if(isset($_POST['download'])){
                 case 0:
                     $confirmed[] = $line;
                     break;
-                case 3:
                 case 1:
                     $changed[] = $line;
                     break;
+	            case 3:
                 case 2:
                     $unconfirmed[] = $line;
                     break;
