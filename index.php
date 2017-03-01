@@ -14,14 +14,25 @@
  *
  *
  */
+session_start();
 define( 'IN_CODE', 1 );
 //turnoff errors
 error_reporting(0);
 require_once( 'login.php' );
 $errors = [];
 $message = null;
-
-if(isset($_POST['username']) && !isset($_SESSION['logged_in'])) {
+if(isset($_POST['logout'])){
+    //from php manual
+	$_SESSION = array();
+	if (ini_get("session.use_cookies")) {
+		$params = session_get_cookie_params();
+		setcookie(session_name(), '', time() - 42000,
+			$params["path"], $params["domain"],
+			$params["secure"], $params["httponly"]
+		);
+	}
+	session_destroy();
+} elseif(isset($_POST['username']) && !isset($_SESSION['logged_in'])) {
 	$db    = new PDO( "mysql:host=localhost;dbname=" . DBNAME . ";charset=latin1", USERNAME, PASS, array(
 		PDO::ATTR_EMULATE_PREPARES => false,
 		PDO::ATTR_ERRMODE          => PDO::ERRMODE_EXCEPTION
@@ -296,6 +307,10 @@ if(isset($_SESSION['logged_in'])){
         <title>LAT - CVS Processor</title>
     </head>
     <body>
+    <form action="" method="POST">
+        <input type="hidden" name="logout"/>
+        <input type="submit" value="logout"/>
+    </form>
     <h1>File uploader</h1>
     <p>Please upload file below and click submit</p>
     <?php if ( $download_link ) {
