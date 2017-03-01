@@ -14,55 +14,18 @@
  *
  *
  */
-session_start();
 define( 'IN_CODE', 1 );
 //turnoff errors
 error_reporting(0);
 require_once( 'login.php' );
 $errors = [];
-$message = null;
-if(isset($_POST['logout'])){
-    //from php manual
-	$_SESSION = array();
-	if (ini_get("session.use_cookies")) {
-		$params = session_get_cookie_params();
-		setcookie(session_name(), '', time() - 42000,
-			$params["path"], $params["domain"],
-			$params["secure"], $params["httponly"]
-		);
-	}
-	session_destroy();
-} elseif(isset($_POST['username']) && !isset($_SESSION['logged_in'])) {
-	$db    = new PDO( "mysql:host=localhost;dbname=" . DBNAME . ";charset=latin1", USERNAME, PASS, array(
-		PDO::ATTR_EMULATE_PREPARES => false,
-		PDO::ATTR_ERRMODE          => PDO::ERRMODE_EXCEPTION
-	) );
-	$username = $_POST['username'];
-	$stmt  = $db->prepare( "SELECT * FROM users WHERE `username`=:username" );
-	$stmt->bindParam( ':username', $username, PDO::PARAM_STR );
-	$stmt->execute();
-	$rows_count = $stmt->rowCount();
-	if ( $rows_count > 1 ) {
-		$errors[] = "too many users";
-	} elseif ( $rows_count === 1 ) {
-		$rows = $stmt->fetchAll( PDO::FETCH_ASSOC );
-		$row  = $rows[0];
-		if ( password_verify( $_POST['pass'], $row['password'] ) ) {
-            $_SESSION['logged_in']=1;
-		} else {
-			$message = "Those credentials didn't match";
-        }
-	} else {
-		$message = "Those credentials didn't match";
-	}
-} elseif (isset($_SESSION['logged_in'])) {
 	if ( isset( $_POST['download'] ) ) {
 		try {
 			$db   = new PDO( "mysql:host=localhost;dbname=" . DBNAME . ";charset=latin1", USERNAME, PASS, array(
 				PDO::ATTR_EMULATE_PREPARES => false,
 				PDO::ATTR_ERRMODE          => PDO::ERRMODE_EXCEPTION
 			) );
-			$stmt = $db->query( 'SELECT * FROM existing' );
+			$stmt = $db->query( 'SELECT * FROM bella_existing' );
 			$rows = $stmt->fetchAll( PDO::FETCH_ASSOC );
 			foreach ( $rows as $row ) {
 				$line = array( $row['First Name'], $row['Last Name'], $row['Email'] );
@@ -82,8 +45,7 @@ if(isset($_POST['logout'])){
 		} catch ( PDOException $e ) {
 			$errors[] = "Code 10: " . $e;
 		}
-	}
-	if ( isset( $_FILES['upload'] ) ) {
+	} elseif ( isset( $_FILES['upload'] ) ) {
 		$upload_name = $_FILES['upload']['name'];
 		$file_size   = $_FILES['upload']['size'];
 		$file_ext    = strtolower( end( explode( '.', $upload_name ) ) );
@@ -103,25 +65,25 @@ if(isset($_POST['logout'])){
 						$email      = "";
 						$status     = "";
 						//setup prepares
-						$select_matching = $db->prepare( "SELECT * FROM matching WHERE `Email`=:email" );
+						$select_matching = $db->prepare( "SELECT * FROM bella_matching WHERE `Email`=:email" );
 						$select_matching->bindParam( ':email', $email, PDO::PARAM_STR );
-						$select_existing = $db->prepare( "SELECT * FROM existing WHERE `Email`=:email" );
+						$select_existing = $db->prepare( "SELECT * FROM bella_existing WHERE `Email`=:email" );
 						$select_existing->bindParam( ':email', $email, PDO::PARAM_STR );
-						$update_matching = $db->prepare( "UPDATE matching SET `First Name`=:firstname, `Last Name`=:lastname WHERE `Email`=:email" );
+						$update_matching = $db->prepare( "UPDATE bella_matching SET `First Name`=:firstname, `Last Name`=:lastname WHERE `Email`=:email" );
 						$update_matching->bindParam( ':email', $email, PDO::PARAM_STR );
 						$update_matching->bindParam( ':firstname', $first_name, PDO::PARAM_STR );
 						$update_matching->bindParam( ':lastname', $last_name, PDO::PARAM_STR );
-						$update_existing = $db->prepare( "UPDATE existing SET `First Name`=:firstname, `Last Name`=:lastname, `status`=:status WHERE `Email`=:email" );
+						$update_existing = $db->prepare( "UPDATE bella_existing SET `First Name`=:firstname, `Last Name`=:lastname, `status`=:status WHERE `Email`=:email" );
 						$update_existing->bindParam( ':email', $email, PDO::PARAM_STR );
 						$update_existing->bindParam( ':firstname', $first_name, PDO::PARAM_STR );
 						$update_existing->bindParam( ':lastname', $last_name, PDO::PARAM_STR );
 						$update_existing->bindParam( ':status', $status, PDO::PARAM_STR );
-						$insert_existing = $db->prepare( "INSERT INTO existing(`First Name`,`Last Name`, `Email`,`status`) VALUES(:firstname,:lastname,:email,:status)" );
+						$insert_existing = $db->prepare( "INSERT INTO bella_existing(`First Name`,`Last Name`, `Email`,`status`) VALUES(:firstname,:lastname,:email,:status)" );
 						$insert_existing->bindParam( ':email', $email, PDO::PARAM_STR );
 						$insert_existing->bindParam( ':firstname', $first_name, PDO::PARAM_STR );
 						$insert_existing->bindParam( ':lastname', $last_name, PDO::PARAM_STR );
 						$insert_existing->bindParam( ':status', $status, PDO::PARAM_STR );
-						$insert_matching = $db->prepare( "INSERT INTO matching(`First Name`,`Last Name`, `Email`) VALUES(:firstname,:lastname,:email)" );
+						$insert_matching = $db->prepare( "INSERT INTO bella_matching(`First Name`,`Last Name`, `Email`) VALUES(:firstname,:lastname,:email)" );
 						$insert_matching->bindParam( ':firstname', $first_name, PDO::PARAM_STR );
 						$insert_matching->bindParam( ':lastname', $last_name, PDO::PARAM_STR );
 						$insert_matching->bindParam( ':email', $email, PDO::PARAM_STR );
@@ -247,46 +209,51 @@ if(isset($_POST['logout'])){
 			$errors[] = "code 2: That file type is not allowed.";
 		}
 	}
-//generate export file
+    //generate export file
 	$download_link = null;
 	if ( ! empty( $confirmed ) || ! empty( $unconfirmed ) || ! empty( $changed ) ) {
-		$bytes         = bin2hex( random_bytes( 50 ) );
-		$download_link = "downloads/" . $bytes . ".csv";
-		if ( $fh = fopen( $download_link, "w" ) ) {
-			fputcsv( $fh, array( "First Name", "Last Name", "Email" ) );
-			if ( ! empty( $confirmed ) ) {
-				fputcsv( $fh, array( "Confirmed", "Status", "0" ) );
-				foreach ( $confirmed as $line ) {
-					fputcsv( $fh, $line );
+	    $strong = false;
+		$bytes         = bin2hex( openssl_random_pseudo_bytes( 50, $strong ) );
+		if($strong) {
+			$download_link = "downloads/" . $bytes . ".csv";
+			if ( $fh = fopen( $download_link, "w" ) ) {
+				fputcsv( $fh, array( "First Name", "Last Name", "Email" ) );
+				if ( ! empty( $confirmed ) ) {
+					fputcsv( $fh, array( "Confirmed", "Status", "0" ) );
+					foreach ( $confirmed as $line ) {
+						fputcsv( $fh, $line );
+					}
+					fputcsv( $fh, array() );
+					fputcsv( $fh, array() );
+					fputcsv( $fh, array() );
 				}
-				fputcsv( $fh, array() );
-				fputcsv( $fh, array() );
-				fputcsv( $fh, array() );
-			}
-			if ( ! empty( $unconfirmed ) ) {
-				fputcsv( $fh, array( "Unconfirmed", "Status", "2" ) );
-				foreach ( $unconfirmed as $line ) {
-					fputcsv( $fh, $line );
+				if ( ! empty( $unconfirmed ) ) {
+					fputcsv( $fh, array( "Unconfirmed", "Status", "2" ) );
+					foreach ( $unconfirmed as $line ) {
+						fputcsv( $fh, $line );
+					}
+					fputcsv( $fh, array() );
+					fputcsv( $fh, array() );
+					fputcsv( $fh, array() );
 				}
-				fputcsv( $fh, array() );
-				fputcsv( $fh, array() );
-				fputcsv( $fh, array() );
-			}
-			if ( ! empty( $changed ) ) {
-				fputcsv( $fh, array( "Changed", "Status", "1" ) );
-				foreach ( $changed as $line ) {
-					fputcsv( $fh, $line );
+				if ( ! empty( $changed ) ) {
+					fputcsv( $fh, array( "Changed", "Status", "1" ) );
+					foreach ( $changed as $line ) {
+						fputcsv( $fh, $line );
+					}
+					fputcsv( $fh, array() );
+					fputcsv( $fh, array() );
+					fputcsv( $fh, array() );
 				}
-				fputcsv( $fh, array() );
-				fputcsv( $fh, array() );
-				fputcsv( $fh, array() );
-			}
 
-			fclose( $fh );
+				fclose( $fh );
+			} else {
+				$errors[]      = "code 9: Couldn't open file for writing";
+				$download_link = null;
+			}
 		} else {
-			$errors[]      = "code 9: Couldn't open file for writing";
-			$download_link = null;
-		}
+			$errors[]      = "code 9: Couldn't create random file";
+        }
 	}
 	if ( ! empty( $errors ) && LOGS ) {
 		$dateTime = new DateTime();
@@ -297,20 +264,13 @@ if(isset($_POST['logout'])){
 			fclose( $fh );
 		}
 	}
-}
-if(isset($_SESSION['logged_in'])){
-    //setup form upload to process
-    ?>
+	//setup form upload to process ?>
     <!DOCTYPE html>
     <html>
     <head>
         <title>LAT - CVS Processor</title>
     </head>
     <body>
-    <form action="" method="POST">
-        <input type="hidden" name="logout"/>
-        <input type="submit" value="logout"/>
-    </form>
     <h1>File uploader</h1>
     <p>Please upload file below and click submit</p>
     <?php if ( $download_link ) {
@@ -331,23 +291,3 @@ if(isset($_SESSION['logged_in'])){
     </form>
     </body>
     </html>
-<?php } else {
-	//session not logged in ?>
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>LAT - CVS Processor</title>
-    </head>
-    <body>
-        <h1>Please log in</h1>
-        <?php if($message){
-            echo '<p>'.$message.'</p>';
-        }?>
-        <form action="" method="POST">
-            <input type="text" name="username"/>
-            <input type="password" name="pass"/>
-            <input type="submit" value="Submit"/>
-        </form>
-    </body>
-    </html>
-<?php }?>
