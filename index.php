@@ -16,7 +16,7 @@
  */
 define( 'IN_CODE', 1 );
 //turnoff errors
-//error_reporting( 0 );
+error_reporting( 0 );
 require_once( 'login.php' );
 $errors = [];
 if ( isset( $_POST['download'] ) ) {
@@ -143,9 +143,12 @@ if ( isset( $_POST['download'] ) ) {
                         } elseif($exists_existing&&$match_existing&&$exists_full_contact&&!$match_full_contact){
                             //#2
                             $changed[] = array("2",$first_name,$last_name,$rows_full_contact['First Name'],$rows_full_contact['Last Name'],$email);
-                        } elseif($exists_existing&&$match_existing&&!$exists_full_contact&&!$match_full_contact){
-                            //#6&&#7
-                            $unconfirmed[] = array("7",$first_name,$last_name,"","",$email);
+                        } elseif($exists_existing&&$match_existing&&!$exists_full_contact&&!$match_full_contact) {
+	                        //#6&&#7
+	                        $unconfirmed[] = array( "7", $first_name, $last_name, "", "", $email );
+                        } elseif($exists_existing&&!$match_existing&&$exists_full_contact&&$match_full_contact){
+                            //#8
+                            $changed[] = array("8",$first_name,$last_name,$rows_full_contact['First Name'],$rows_full_contact['Last Name'],$email);
                         } elseif($exists_existing&&!$match_existing&&$exists_full_contact&&!$match_full_contact){
 	                        //#1
                             $changed[] = array("1",$first_name,$last_name,$rows_full_contact['First Name'],$rows_full_contact['Last Name'],$email);
