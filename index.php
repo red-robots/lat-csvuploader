@@ -19,6 +19,10 @@ define( 'IN_CODE', 1 );
 error_reporting( 0 );
 require_once( 'login.php' );
 $errors = [];
+$confirmed = [];
+$changed = [];
+$unconfirmed  = [];
+$headers = [];
 if ( isset( $_POST['download'] ) ) {
 	try {
 		$db   = new PDO( "mysql:host=localhost;dbname=" . DBNAME . ";charset=latin1", USERNAME, PASS, array(
@@ -96,6 +100,7 @@ if ( isset( $_POST['download'] ) ) {
 					while ( $line = fgetcsv( $fh ) ) {
 						if ( $i === 0 ) {
 							$i ++;
+							$headers = $line;
 							continue;
 						}
                         if($linkedin_file){
@@ -139,31 +144,31 @@ if ( isset( $_POST['download'] ) ) {
 						}
                         if($exists_existing&&$match_existing&&$exists_full_contact&&$match_full_contact){
 						    //#3
-                            $confirmed[] = array("3","No Change At Source","",$first_name,$last_name,$email);
+                            $confirmed[] = array_merge(array("3","No Change At Source",""),$line);
                         } elseif($exists_existing&&$match_existing&&$exists_full_contact&&!$match_full_contact){
                             //#2
-                            $changed[] = array("2",$first_name,$last_name,$rows_full_contact['First Name'],$rows_full_contact['Last Name'],$email);
+                            $changed[] = array_merge(array("2",$rows_full_contact['First Name'],$rows_full_contact['Last Name']),$line);
                         } elseif($exists_existing&&$match_existing&&!$exists_full_contact&&!$match_full_contact) {
 	                        //#6&&#7
-	                        $unconfirmed[] = array( "7", $first_name, $last_name, "", "", $email );
+	                        $unconfirmed[] = array_merge(array( "7", "", ""),$line);
                         } elseif($exists_existing&&!$match_existing&&$exists_full_contact&&$match_full_contact){
                             //#8
-                            $changed[] = array("8",$first_name,$last_name,$rows_full_contact['First Name'],$rows_full_contact['Last Name'],$email);
+                            $changed[] = array_merge(array("8",$rows_full_contact['First Name'],$rows_full_contact['Last Name']),$line);
                         } elseif($exists_existing&&!$match_existing&&$exists_full_contact&&!$match_full_contact){
 	                        //#1
-                            $changed[] = array("1",$first_name,$last_name,$rows_full_contact['First Name'],$rows_full_contact['Last Name'],$email);
+                            $changed[] = array_merge(array("1",$rows_full_contact['First Name'],$rows_full_contact['Last Name']),$line);
                         } elseif($exists_existing&&!$match_existing&&!$exists_full_contact&&!$match_full_contact){
-	                        //#1
-                            $changed[] = array("1",$first_name,$last_name,$rows_full_contact['First Name'],$rows_full_contact['Last Name'],$email);
+	                        //#9
+                            $changed[] = array_merge(array("9","",""),$line);
                         } elseif(!$exists_existing&&!$match_existing&&$exists_full_contact&&$match_full_contact) {
                             //#4
-	                        $confirmed[] = array("4","","",$first_name,$last_name,$email);
+	                        $confirmed[] = array_merge(array("4",$rows_full_contact['First Name'],$rows_full_contact['Last Name']),$line);
                         } elseif(!$exists_existing&&!$match_existing&&$exists_full_contact&&!$match_full_contact) {
                             //#5
-	                        $changed[] = array("5",$first_name,$last_name,$rows_full_contact['First Name'],$rows_full_contact['Last Name'],$email);
+	                        $changed[] = array_merge(array("5",$rows_full_contact['First Name'],$rows_full_contact['Last Name']),$line);
                         } else {
                             //#6&&#7
-	                        $unconfirmed[] = array("6",$first_name,$last_name,"","",$email);
+	                        $unconfirmed[] = array_merge(array("6","",""),$line);
                         }
                         if($exists_existing&&!$match_existing){
                             $update_existing->execute();
@@ -229,11 +234,15 @@ if ( isset( $_POST['download'] ) ) {
                         }
                         $first_name = trim($line[1]);
 						$last_name = trim($line[3]);
-						$email = trim($line[47]);
-						$select_full_contact->execute();
-						$row_count = $select_full_contact->rowCount();
-						if($email&&!$row_count) {
-							$insert_full_contact->execute();
+						$emails = array(trim($line[47]),trim($line[50]),trim($line[53]));
+						foreach($emails as $email) {
+							if(!empty($email)) {
+								$select_full_contact->execute();
+								$row_count = $select_full_contact->rowCount();
+								if ( ! $row_count ) {
+									$insert_full_contact->execute();
+								}
+							}
 						}
 					}
 				} catch ( PDOException $e ) {
@@ -262,7 +271,7 @@ if ( ! empty( $confirmed ) || ! empty( $unconfirmed ) || ! empty( $changed ) ) {
 	if ( $strong ) {
 		$download_link = "downloads/" . $bytes . ".csv";
 		if ( $fh = fopen( $download_link, "w" ) ) {
-			fputcsv( $fh, array( "Status","First Change","Last Change","First Name", "Last Name", "Email" ) );
+			fputcsv( $fh, array_merge(array( "Status","FC First","FC Last" ),$headers));
 			if ( ! empty( $confirmed ) ) {
 				fputcsv( $fh, array( "Confirmed") );
 				foreach ( $confirmed as $line ) {
