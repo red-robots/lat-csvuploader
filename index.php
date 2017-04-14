@@ -104,9 +104,9 @@ if ( isset( $_POST['download'] ) ) {
 							continue;
 						}
                         if($linkedin_file){
-                            $email      = trim( $line[5] );
-                            $first_name = trim( $line[1] );
-                            $last_name  = trim( $line[3] );
+                            $email      = trim( $line[4] );
+                            $first_name = trim( $line[0] );
+                            $last_name  = trim( $line[1] );
                         } else {
                             $email = trim($line[4]);
                             $names = explode(" ",trim($line[1]));
