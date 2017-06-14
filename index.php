@@ -6,11 +6,12 @@
  * Time: 3:54 PM
  *
  *
+ *This program matches a full contact database against an existing database of most recent information 
+ * in order to find discrpancies in certain input fields
  *
- * status codes:
- * 0 = confirmed
- * 1 = changed
- * 2 = unconfirmed
+ *Only the input of a SA/Linkedin file allows for the output of a download file.
+ *
+ *The FC database is replaced entirely with each FC upload as this is seen as accurate information
  *
  *
  */
